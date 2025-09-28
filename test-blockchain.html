@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blockchain Test - Forest Adventure</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+
+        .test-section {
+            background: #2a2a2a;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border: 1px solid #444;
+        }
+
+        button {
+            background: #8B5CF6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+
+        button:hover {
+            background: #7C3AED;
+        }
+
+        .result {
+            background: #333;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🌲 Forest Adventure - Blockchain Test</h1>
+
+    <div class="test-section">
+        <h2>Connection Status</h2>
+        <div id="connection-status">🔴 Not Connected</div>
+        <button id="connect-btn">Connect to Flow</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Story Creation</h2>
+        <button id="test-story-btn">Create Test Story</button>
+        <div id="story-result" class="result" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Story Retrieval</h2>
+        <input type="number" id="story-id-input" placeholder="Enter Story ID" style="padding: 8px; margin: 5px;">
+        <button id="get-story-btn">Get Story</button>
+        <div id="get-story-result" class="result" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Total Stories</h2>
+        <button id="total-stories-btn">Get Total Stories</button>
+        <div id="total-stories-result" class="result" style="display: none;"></div>
+    </div>
+
+    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
+    <script>
+        // Contract configuration
+        const CONTRACT_ADDRESS = '0xafa6C385c1B6D26Fda55f1a576828B75E9F9FD6c';
+        const CONTRACT_ABI = [
+            'function createStoryOutcome(string memory _endingCategory, uint256 _score, string memory _imageUrl, string memory _mangaImageUrl) public returns (uint256)',
+            'function getStoryOutcome(uint256 _storyId) public view returns (uint256 storyId, string memory endingCategory, uint256 score, string memory imageUrl, string memory mangaImageUrl, address player, uint256 timestamp)',
+            'function getTotalStories() public view returns (uint256)',
+            'function storyExists(uint256 _storyId) public view returns (bool)',
+            'event StoryCreated(uint256 indexed storyId, address indexed player, string endingCategory, uint256 score)'
+        ];
+
+        let contract = null;
+        let provider = null;
+
+        // Initialize
+        async function init() {
+            if (typeof window.ethereum !== 'undefined') {
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+                console.log('Contract initialized');
+            } else {
+                alert('Please install MetaMask');
+            }
+        }
+
+        // Connect to Flow
+        async function connectToFlow() {
+            try {
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+
+                // Check network
+                const network = await provider.getNetwork();
+                const flowChainId = 545;
+
+                if (network.chainId !== flowChainId) {
+                    const FLOW_TESTNET_PARAMS = {
+                        chainId: '0x221',
+                        chainName: 'Flow',
+                        rpcUrls: ['https://testnet.evm.nodes.onflow.org'],
+                        nativeCurrency: {
+                            name: 'Flow',
+                            symbol: 'FLOW',
+                            decimals: 18,
+                        },
+                        blockExplorerUrls: ['https://evm-testnet.flowscan.io/']
+                    };
+
+                    try {
+                        await window.ethereum.request({
+                            method: 'wallet_switchEthereumChain',
+                            params: [{ chainId: FLOW_TESTNET_PARAMS.chainId }],
+                        });
+                    } catch (switchError) {
+                        if (switchError.code === 4902) {
+                            await window.ethereum.request({
+                                method: 'wallet_addEthereumChain',
+                                params: [FLOW_TESTNET_PARAMS]
+                            });
+                        }
+                    }
+                }
+
+                const signer = provider.getSigner();
+                const account = await signer.getAddress();
+                document.getElementById('connection-status').textContent = `🟢 Connected: ${account.slice(0, 6)}...${account.slice(-4)}`;
+                document.getElementById('connection-status').style.color = '#10B981';
+
+                return true;
+            } catch (error) {
+                console.error('Connection failed:', error);
+                alert('Connection failed: ' + error.message);
+                return false;
+            }
+        }
+
+        // Test story creation
+        async function testStoryCreation() {
+            try {
+                const signer = provider.getSigner();
+                const contractWithSigner = contract.connect(signer);
+
+                const tx = await contractWithSigner.createStoryOutcome(
+                    "Test Heroic Ending",
+                    8,
+                    "https://image.pollinations.ai/prompt/test%20hero",
+                    "https://image.pollinations.ai/prompt/test%20manga"
+                );
+
+                const receipt = await tx.wait();
+                const event = receipt.events.find(e => e.event === 'StoryCreated');
+                const storyId = event ? event.args.storyId : 'Unknown';
+
+                document.getElementById('story-result').innerHTML = `
+                    <strong>Story Created Successfully!</strong><br>
+                    Transaction: ${tx.hash}<br>
+                    Story ID: ${storyId}<br>
+                    Block: ${receipt.blockNumber}
+                `;
+                document.getElementById('story-result').style.display = 'block';
+
+            } catch (error) {
+                document.getElementById('story-result').innerHTML = `<strong>Error:</strong> ${error.message}`;
+                document.getElementById('story-result').style.display = 'block';
+            }
+        }
+
+        // Test story retrieval
+        async function testStoryRetrieval() {
+            try {
+                const storyId = document.getElementById('story-id-input').value;
+                if (!storyId) {
+                    alert('Please enter a story ID');
+                    return;
+                }
+
+                const story = await contract.getStoryOutcome(storyId);
+
+                document.getElementById('get-story-result').innerHTML = `
+                    <strong>Story Retrieved:</strong><br>
+                    ID: ${story.storyId}<br>
+                    Ending: ${story.endingCategory}<br>
+                    Score: ${story.score}<br>
+                    Player: ${story.player}<br>
+                    Timestamp: ${new Date(story.timestamp * 1000).toLocaleString()}
+                `;
+                document.getElementById('get-story-result').style.display = 'block';
+
+            } catch (error) {
+                document.getElementById('get-story-result').innerHTML = `<strong>Error:</strong> ${error.message}`;
+                document.getElementById('get-story-result').style.display = 'block';
+            }
+        }
+
+        // Test total stories
+        async function testTotalStories() {
+            try {
+                const total = await contract.getTotalStories();
+                document.getElementById('total-stories-result').innerHTML = `<strong>Total Stories:</strong> ${total}`;
+                document.getElementById('total-stories-result').style.display = 'block';
+            } catch (error) {
+                document.getElementById('total-stories-result').innerHTML = `<strong>Error:</strong> ${error.message}`;
+                document.getElementById('total-stories-result').style.display = 'block';
+            }
+        }
+
+        // Event listeners
+        document.getElementById('connect-btn').addEventListener('click', connectToFlow);
+        document.getElementById('test-story-btn').addEventListener('click', testStoryCreation);
+        document.getElementById('get-story-btn').addEventListener('click', testStoryRetrieval);
+        document.getElementById('total-stories-btn').addEventListener('click', testTotalStories);
+
+        // Initialize on load
+        init();
+    </script>
+</body>
+
+</html>
