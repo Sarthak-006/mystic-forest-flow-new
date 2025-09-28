@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="Embark on a fantasy adventure through a magical forest where your choices determine your fate. Save your story to Flow blockchain and own your adventure forever.">
+    <title>Mystic Forest Flow | Interactive Blockchain Adventure</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌲</text></svg>">
+</head>
+
+<body>
+    <div class="game-container">
+        <header class="game-header">
+            <h1 class="game-title">Mystic Forest <span>Flow</span></h1>
+            <div class="header-right">
+                <div id="score-display" class="score">Score: 0</div>
+                <div id="blockchain-status" class="blockchain-status">
+                    <span id="connection-status">🔴 Not Connected</span>
+                    <button id="connect-wallet" class="connect-button" style="display: none;">Connect Wallet</button>
+                </div>
+            </div>
+        </header>
+
+        <main id="main-content">
+            <div class="image-container">
+                <img id="story-image" alt="Story scene" class="story-image">
+                <div class="image-overlay"></div>
+            </div>
+
+            <div id="situation-text" class="situation"></div>
+
+            <div id="loading-indicator" class="loading">Loading...</div>
+
+            <div id="choices" class="choice-container"></div>
+        </main>
+
+        <div id="end-screen" class="end-screen" style="display: none;">
+            <div id="end-text" class="end-text"></div>
+            <div class="end-images">
+                <img id="manga-image" alt="Story manga" class="manga-image">
+                <img id="summary-image" alt="Story summary" class="summary-image">
+            </div>
+        </div>
+
+        <!-- Add modal dialog for sharing -->
+        <div id="share-modal" class="share-modal" style="display: none;">
+            <div class="share-modal-content">
+                <span class="close-modal">&times;</span>
+                <h2>Your Mystic Forest Adventure</h2>
+                <div class="share-image-container">
+                    <img id="share-manga-image" alt="Shareable manga story" class="share-manga-image">
+                    <div id="share-loading" class="loading">Generating your story...</div>
+                </div>
+                <div class="share-actions">
+                    <button id="download-image" class="action-button download-button">Download Image</button>
+                    <button id="copy-image" class="action-button copy-button">Copy Image</button>
+                    <button id="share-twitter" class="action-button social-button twitter-button">Share on
+                        Twitter</button>
+                    <button id="share-facebook" class="action-button social-button facebook-button">Share on
+                        Facebook</button>
+                </div>
+            </div>
+        </div>
+
+        <footer class="game-footer">
+            <p>
+                <span class="footer-brand">Mystic Forest Flow</span> &copy; <span id="current-year"></span> |
+                Images by <a href="https://pollinations.ai" target="_blank" rel="noopener">pollinations.ai</a>
+            </p>
+            <p class="footer-note">
+                Your choices shape your destiny. Choose wisely.
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        // Load ethers.js with multiple fallback options
+        function loadEthers() {
+            return new Promise((resolve, reject) => {
+                const cdnUrls = [
+                    'https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js',
+                    'https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js',
+                    'https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js'
+                ];
+
+                let currentIndex = 0;
+
+                function tryLoadScript() {
+                    if (currentIndex >= cdnUrls.length) {
+                        // All CDNs failed, try offline fallback
+                        console.log('All CDN sources failed, trying offline fallback...');
+                        const script = document.createElement('script');
+                        script.src = './ethers-offline.js';
+                        script.onload = () => {
+                            console.log('Ethers.js loaded from offline fallback');
+                            resolve(true);
+                        };
+                        script.onerror = () => {
+                            console.error('Even offline fallback failed');
+                            reject(new Error('All ethers.js sources failed to load'));
+                        };
+                        document.head.appendChild(script);
+                        return;
+                    }
+
+                    const script = document.createElement('script');
+                    script.src = cdnUrls[currentIndex];
+                    script.onload = () => {
+                        console.log(`Ethers.js loaded from: ${cdnUrls[currentIndex]}`);
+                        window.ethers = ethers;
+                        resolve(true);
+                    };
+                    script.onerror = () => {
+                        console.log(`Failed to load from: ${cdnUrls[currentIndex]}`);
+                        currentIndex++;
+                        tryLoadScript();
+                    };
+                    document.head.appendChild(script);
+                }
+
+                tryLoadScript();
+            });
+        }
+
+        // Load ethers and then initialize
+        loadEthers().then(() => {
+            console.log('Ethers.js ready');
+        }).catch((error) => {
+            console.error('Failed to load ethers.js:', error);
+            alert('Failed to load blockchain library. The game will work without blockchain features.');
+        });
+    </script>
+    <script src="script.js"></script>
+    <script>
+        document.getElementById('current-year').textContent = new Date().getFullYear();
+    </script>
+</body>
+
+</html>
